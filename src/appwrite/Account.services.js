@@ -2,6 +2,11 @@ import { ID } from "appwrite";
 import { account } from "./index";
 
 class AccountService {
+  // CREATE USER
+  async createUser(email, password, name) {
+    return await account.create(ID.unique(), email, password, name);
+  }
+
   // LOGIN
   async login(email, password) {
     return await account.createEmailPasswordSession(email, password);

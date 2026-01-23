@@ -1,229 +1,180 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import DatabaseService from "../appwrite/Database.services"; // your DB service
-import AccountService from "../appwrite/Account.services"; // your Appwrite account service
+import dbService from "../appwrite/Database.services";
+import AccountService from "../appwrite/Account.services";
 
 export default function Register() {
   const navigate = useNavigate();
-  const dbService = new DatabaseService();
 
   const [states, setStates] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [zones, setZones] = useState([]);
   const [schools, setSchools] = useState([]);
+  const [error, setError] = useState("");
 
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
-    state: "",
     role: "",
+    state: "",
     district: "",
     zone: "",
     school: "",
+    selfIntro: "",
   });
 
-  // Fetch all states on component mount
+  // Load states
   useEffect(() => {
-    async function fetchStates() {
-      const res = await dbService.getStates();
-      console.log(res);
-      console.log("avghszj")
-      setStates(res);
-    }
-    fetchStates();
+    dbService.getStates().then(setStates).catch(console.error);
   }, []);
 
-  // Fetch districts when state changes
+  // Load districts
   useEffect(() => {
-    async function fetchDistricts() {
-      if (formData.state) {
-        const res = await dbService.getDistrictsByState(formData.state);
-        setDistricts(res);
-      } else {
-        setDistricts([]);
-        setZones([]);
-        setSchools([]);
-      }
-      setFormData(prev => ({ ...prev, district: "", zone: "", school: "" }));
+    if (!formData.state) {
+      setDistricts([]);
+      setZones([]);
+      setSchools([]);
+      setFormData(p => ({ ...p, district: "", zone: "", school: "" }));
+      return;
     }
-    fetchDistricts();
+    dbService.getDistrictsByState(formData.state).then(setDistricts).catch(console.error);
   }, [formData.state]);
 
-  // Fetch zones when district changes (for technician or school admin)
+  // Load zones
   useEffect(() => {
-    async function fetchZones() {
-      if (formData.district && (formData.role === "technician" || formData.role === "schooladmin")) {
-        const res = await dbService.getZonesByDistrict(formData.district);
-        setZones(res);
-      } else {
-        setZones([]);
-        setSchools([]);
-      }
-      setFormData(prev => ({ ...prev, zone: "", school: "" }));
+    if (!formData.district || !["technician", "schooladmin"].includes(formData.role.toLowerCase())) {
+      setZones([]);
+      setSchools([]);
+      setFormData(p => ({ ...p, zone: "", school: "" }));
+      return;
     }
-    fetchZones();
+    dbService.getZonesByDistrict(formData.district).then(setZones).catch(console.error);
   }, [formData.district, formData.role]);
 
-  // Fetch schools when zone changes (for school admin)
+  // Load schools
   useEffect(() => {
-    async function fetchSchools() {
-      if (formData.zone && formData.role === "schooladmin") {
-        const res = await dbService.getSchoolsByZone(formData.zone);
-        setSchools(res);
-      } else {
-        setSchools([]);
-      }
-      setFormData(prev => ({ ...prev, school: "" }));
+    if (!formData.zone || formData.role.toLowerCase() !== "schooladmin") {
+      setSchools([]);
+      setFormData(p => ({ ...p, school: "" }));
+      return;
     }
-    fetchSchools();
+    dbService.getSchoolsByZone(formData.zone).then(setSchools).catch(console.error);
   }, [formData.zone, formData.role]);
 
-  // Handle input change
-  const handleChange = (e) => {
+  const handleChange = e => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Handle form submit
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
+    setError("");
+
     try {
-      // Register user via AccountService
-      await AccountService.register(formData);
-      alert("Registration successful!");
-      navigate("/login");
+      const user = await AccountService.createUser(
+        formData.email,
+        formData.password,
+        formData.name
+      );
+
+      let parentAdminId = null;
+
+      const role = formData.role.toLowerCase();
+
+      if (role === "stateadmin") {
+        parentAdminId = "696b9008000178869ab2";
+      } else if (role === "districtadmin") {
+        const stateAdmin = await dbService.getStateAdmin(formData.state);
+        parentAdminId = stateAdmin?.userId || null;
+      } else if (["technician", "schooladmin"].includes(role)) {
+        const districtAdmin = await dbService.getDistrictAdmin(formData.district);
+        parentAdminId = districtAdmin?.userId || null;
+      }
+
+      let requestData = {
+  userId: user.$id,
+  requestedRole: role,
+  parentAdminId,
+  selfIntro: formData.selfIntro || "",
+  status: "pending",
+};
+
+// Only include state for district admin
+if (role === "districtadmin") {
+  requestData.state = formData.state;
+}
+
+// Only include district for districtadmin, technician, schooladmin
+if (["districtadmin", "technician", "schooladmin"].includes(role)) {
+  requestData.district = formData.district;
+}
+
+// Remove zone and school because columns don't exist
+
+
+      await dbService.createUserRequest(requestData);
+
+      navigate("/waiting-approval");
     } catch (err) {
-      console.error(err);
-      alert("Registration failed: " + err.message);
+      console.error("Registration error:", err);
+      setError(err.message || "Something went wrong during registration");
     }
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-50">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-6 rounded-lg shadow-md w-full max-w-md"
-      >
-        <h2 className="text-2xl font-bold mb-4 text-center">Register</h2>
+    <div className="flex justify-center items-center min-h-screen bg-gray-50 p-4">
+      <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-lg w-full max-w-lg">
+        <h2 className="text-3xl font-bold mb-6 text-center text-blue-900">Register</h2>
 
-        {/* Name, Email, Password */}
-        <input
-          type="text"
-          name="name"
-          placeholder="Name"
-          value={formData.name}
-          onChange={handleChange}
-          required
-          className="w-full border px-3 py-2 rounded mb-3"
-        />
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          value={formData.email}
-          onChange={handleChange}
-          required
-          className="w-full border px-3 py-2 rounded mb-3"
-        />
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          value={formData.password}
-          onChange={handleChange}
-          required
-          className="w-full border px-3 py-2 rounded mb-3"
-        />
+        {error && <p className="text-red-600 mb-4 text-center">{error}</p>}
 
-        {/* State selection */}
-        <select
-          name="state"
-          value={formData.state}
-          onChange={handleChange}
-          required
-          className="w-full border px-3 py-2 rounded mb-3"
-        >
-          <option value="">--Select State--</option>
-          {states.map((s) => (
-            <option key={s.$id} value={s.$id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
+        <input name="name" placeholder="Full Name" value={formData.name} onChange={handleChange} required className="w-full border p-3 rounded mb-4" />
+        <input name="email" type="email" placeholder="Email" value={formData.email} onChange={handleChange} required className="w-full border p-3 rounded mb-4" />
+        <input name="password" type="password" placeholder="Password" value={formData.password} onChange={handleChange} required className="w-full border p-3 rounded mb-4" />
 
-        {/* Role selection */}
-        <select
-          name="role"
-          value={formData.role}
-          onChange={handleChange}
-          required
-          className="w-full border px-3 py-2 rounded mb-3"
-        >
-          <option value="">--Select Role--</option>
+        <select name="role" value={formData.role} onChange={handleChange} required className="w-full border p-3 rounded mb-4">
+          <option value="">-- Select Role --</option>
           <option value="stateadmin">State Admin</option>
           <option value="districtadmin">District Admin</option>
           <option value="technician">Technician</option>
           <option value="schooladmin">School Admin</option>
         </select>
 
-        {/* Dynamic fields */}
-        {(formData.role === "districtadmin" || formData.role === "technician" || formData.role === "schooladmin") && (
-          <select
-            name="district"
-            value={formData.district}
-            onChange={handleChange}
-            required
-            className="w-full border px-3 py-2 rounded mb-3"
-          >
-            <option value="">--Select District--</option>
-            {districts.map((d) => (
-              <option key={d.$id} value={d.$id}>
-                {d.name}
-              </option>
-            ))}
+        {/* State dropdown for State Admin and District Admin */}
+        {["stateadmin", "districtadmin"].includes(formData.role.toLowerCase()) && (
+          <select name="state" value={formData.state} onChange={handleChange} required className="w-full border p-3 rounded mb-4">
+            <option value="">-- Select State --</option>
+            {states.map(s => <option key={s.$id} value={s.$id}>{s.name}</option>)}
           </select>
         )}
 
-        {(formData.role === "technician" || formData.role === "schooladmin") && (
-          <select
-            name="zone"
-            value={formData.zone}
-            onChange={handleChange}
-            required
-            className="w-full border px-3 py-2 rounded mb-3"
-          >
-            <option value="">--Select Zone--</option>
-            {zones.map((z) => (
-              <option key={z.$id} value={z.$id}>
-                {z.name}
-              </option>
-            ))}
+        {/* District dropdown for all except State Admin */}
+        {["districtadmin", "technician", "schooladmin"].includes(formData.role.toLowerCase()) && (
+          <select name="district" value={formData.district} onChange={handleChange} required className="w-full border p-3 rounded mb-4">
+            <option value="">-- Select District --</option>
+            {districts.map(d => <option key={d.$id} value={d.$id}>{d.name}</option>)}
           </select>
         )}
 
-        {formData.role === "schooladmin" && (
-          <select
-            name="school"
-            value={formData.school}
-            onChange={handleChange}
-            required
-            className="w-full border px-3 py-2 rounded mb-3"
-          >
-            <option value="">--Select School--</option>
-            {schools.map((s) => (
-              <option key={s.$id} value={s.$id}>
-                {s.name}
-              </option>
-            ))}
+        {/* Zone for Technician and School Admin */}
+        {["technician", "schooladmin"].includes(formData.role.toLowerCase()) && (
+          <select name="zone" value={formData.zone} onChange={handleChange} className="w-full border p-3 rounded mb-4">
+            <option value="">-- Select Zone --</option>
+            {zones.map(z => <option key={z.$id} value={z.$id}>{z.name}</option>)}
           </select>
         )}
 
-        <button
-          type="submit"
-          className="w-full bg-blue-900 text-white py-2 rounded hover:bg-blue-700"
-        >
-          Register
-        </button>
+        {/* School for School Admin */}
+        {formData.role.toLowerCase() === "schooladmin" && (
+          <select name="school" value={formData.school} onChange={handleChange} className="w-full border p-3 rounded mb-4">
+            <option value="">-- Select School --</option>
+            {schools.map(s => <option key={s.$id} value={s.$id}>{s.name}</option>)}
+          </select>
+        )}
+
+        <textarea name="selfIntro" placeholder="Self Introduction" value={formData.selfIntro} onChange={handleChange} className="w-full border p-3 rounded mb-4" />
+
+        <button type="submit" className="w-full bg-blue-900 text-white py-3 rounded font-semibold hover:bg-blue-800 transition">Submit</button>
       </form>
     </div>
   );

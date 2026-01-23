@@ -11,24 +11,32 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      // Delete existing session to prevent “session already exists”
-      await accountService.logout().catch(() => {});
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    await accountService.logout().catch(() => {});
+    await accountService.login(email, password);
 
-      // Login
-      await accountService.login(email, password);
+    const user = await accountService.getCurrentUser();
 
-      // Update Zustand store
-      await checkAuth();
-
-      // Redirect to dashboard
-      navigate("/super-admin");
-    } catch (err) {
-      setError(err.message);
+    if (!user.labels || user.labels.length === 0) {
+      navigate("/waiting-approval");
+      return;
     }
-  };
+
+    // Redirect based on label
+    if (user.labels.includes("SUPER_ADMIN")) navigate("/super-admin");
+    else if (user.labels.includes("STATE_ADMIN")) navigate("/state-admin");
+    else if (user.labels.includes("DISTRICT_ADMIN")) navigate("/district-admin");
+    else if (user.labels.includes("TECHNICIAN")) navigate("/technician");
+    else if (user.labels.includes("SCHOOL_ADMIN")) navigate("/school-admin");
+    else navigate("/waiting-approval");
+
+  } catch (err) {
+    setError(err.message);
+  }
+};
+
 
   return (
     <div className="flex justify-center items-center h-screen bg-gray-100">
