@@ -1,7 +1,16 @@
 import { ID } from "appwrite";
 import { account } from "./index";
-
 class AccountService {
+  // NEW: Check if authenticated
+  async isAuthenticated() {
+    try {
+      await account.get();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   // CREATE USER
   async createUser(email, password, name) {
     return await account.create(ID.unique(), email, password, name);
@@ -12,9 +21,12 @@ class AccountService {
     return await account.createEmailPasswordSession(email, password);
   }
 
-  // LOGOUT
+  // LOGOUT (Modified to check first)
   async logout() {
-    return await account.deleteSession("current");
+    if (await this.isAuthenticated()) {
+      return await account.deleteSession("current");
+    }
+    // If no session, do nothing (no error thrown)
   }
 
   // GET CURRENT AUTH USER

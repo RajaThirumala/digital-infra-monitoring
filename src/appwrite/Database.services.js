@@ -33,7 +33,7 @@ class DatabaseService {
       const res = await this.tablesDB.listRows({
         databaseId: APPWRITE_DATABASE_ID,
         tableId: APPWRITE_DISTRICTS_ID,
-        queries: [Query.equal("state", stateId)],
+        queries: [Query.equal("states", stateId)],
       });
       return res.rows;
     } catch (err) {
@@ -47,7 +47,7 @@ class DatabaseService {
       const res = await this.tablesDB.listRows({
         databaseId: APPWRITE_DATABASE_ID,
         tableId: APPWRITE_ZONES_ID,
-        queries: [Query.equal("district", districtId)],
+        queries: [Query.equal("districts", districtId)],
       });
       return res.rows;
     } catch (err) {
@@ -61,7 +61,7 @@ class DatabaseService {
       const res = await this.tablesDB.listRows({
         databaseId: APPWRITE_DATABASE_ID,
         tableId: APPWRITE_SCHOOLS_ID,
-        queries: [Query.equal("zone", zoneId)],
+        queries: [Query.equal("zones", zoneId)],
       });
       return res.rows;
     } catch (err) {
@@ -115,6 +115,64 @@ class DatabaseService {
       return null;
     }
   }
+
+  //getStateAdminRequests
+  async  getStateAdminRequests() {
+  const res = await this.tablesDB.listRows({
+    databaseId: APPWRITE_DATABASE_ID,
+    tableId: APPWRITE_USER_REQUESTS_ID,
+      queries: [
+        Query.equal("requestedRole", "stateadmin"),
+        Query.equal("status", "pending")
+      ]
+    }
+  );
+
+  return res.rows;
+}
+
+  //getDistrictAdminRequests
+  async  getdistrictAdminRequests() {
+  const res = await this.tablesDB.listRows({
+    databaseId: APPWRITE_DATABASE_ID,
+    tableId: APPWRITE_USER_REQUESTS_ID,
+      queries: [
+        Query.equal("requestedRole", "districtadmin"),
+        Query.equal("status", "pending")
+      ]
+    }
+  );
+
+  return res.rows;
+}
+
+async  getTechnicianRequests() {
+  const res = await this.tablesDB.listRows({
+    databaseId: APPWRITE_DATABASE_ID,
+    tableId: APPWRITE_USER_REQUESTS_ID,
+      queries: [
+        Query.equal("requestedRole", "technician"),
+        Query.equal("status", "pending")
+      ]
+    }
+  );
+
+  return res.rows;
+}
+async  getschoolAdminRequests() {
+  const res = await this.tablesDB.listRows({
+    databaseId: APPWRITE_DATABASE_ID,
+    tableId: APPWRITE_USER_REQUESTS_ID,
+      queries: [
+        Query.equal("requestedRole", "schooladmin"),
+        Query.equal("status", "pending")
+      ]
+    }
+  );
+
+  return res.rows;
+}
+
 }
 
 export default new DatabaseService();

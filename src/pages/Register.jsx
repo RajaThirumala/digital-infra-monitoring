@@ -77,6 +77,9 @@ export default function Register() {
         formData.name
       );
 
+      // Auto-login after create (minimal addition)
+      await AccountService.login(formData.email, formData.password);
+
       let parentAdminId = null;
 
       const role = formData.role.toLowerCase();
@@ -92,25 +95,14 @@ export default function Register() {
       }
 
       let requestData = {
-  userId: user.$id,
-  requestedRole: role,
-  parentAdminId,
-  selfIntro: formData.selfIntro || "",
-  status: "pending",
-};
-
-// Only include state for district admin
-if (role === "districtadmin") {
-  requestData.state = formData.state;
-}
-
-// Only include district for districtadmin, technician, schooladmin
-if (["districtadmin", "technician", "schooladmin"].includes(role)) {
-  requestData.district = formData.district;
-}
-
-// Remove zone and school because columns don't exist
-
+        userId: user.$id,
+        requestedRole: role,
+        parentAdminId,
+        selfIntro: formData.selfIntro || "",
+        status: "pending",
+        state: formData.state || null,
+        district: formData.district || null
+      };
 
       await dbService.createUserRequest(requestData);
 
@@ -141,7 +133,7 @@ if (["districtadmin", "technician", "schooladmin"].includes(role)) {
         </select>
 
         {/* State dropdown for State Admin and District Admin */}
-        {["stateadmin", "districtadmin"].includes(formData.role.toLowerCase()) && (
+        {["stateadmin", "districtadmin", "technician", "schooladmin"].includes(formData.role.toLowerCase()) && (
           <select name="state" value={formData.state} onChange={handleChange} required className="w-full border p-3 rounded mb-4">
             <option value="">-- Select State --</option>
             {states.map(s => <option key={s.$id} value={s.$id}>{s.name}</option>)}
