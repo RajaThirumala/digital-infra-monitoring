@@ -1,21 +1,34 @@
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+
+import { useEffect, useState } from "react";
+import { Navigate, Outlet } from "react-router-dom";
 import useAuthStore from "../store/authStore";
 
-export default function RequireAuth({ children }) {
-  const navigate = useNavigate();
-  const user = useAuthStore((state) => state.user);
-  const checkAuth = useAuthStore((state) => state.checkAuth);
+export default function RequireAuth() {
+  const [isChecking, setIsChecking] = useState(true);
+  const { user, checkAuth, isLoading } = useAuthStore();
 
   useEffect(() => {
-    async function verify() {
-      const verifiedUser = await checkAuth();
-      if (!verifiedUser) {
-        navigate("/login");
-      }
-    }
-    verify(); // Always check on mount
-  }, [navigate, checkAuth]);
+    const verify = async () => {
+      await checkAuth();
+      setIsChecking(false);
+    };
+    verify();
+  }, [checkAuth]);
 
-  return user ? children : null; // Or add a loading spinner: <div>Loading...</div>
+  if (isChecking || isLoading) {
+    console.log("RequireAuth: Checking/loading state");
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="text-xl text-blue-900">Verifying access...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    console.log("RequireAuth: No user, redirecting to login");
+    return <Navigate to="/login" replace />;
+  }
+
+  console.log("RequireAuth: Rendering Outlet/children");
+  return <Outlet />;
 }

@@ -1,5 +1,7 @@
-import { TablesDB, Query, ID } from "appwrite";
-import appwriteClient from ".";
+// src/appwrite/Database.services.js
+import { Databases, Query, ID } from "appwrite";
+import client from "./index";
+
 import {
   APPWRITE_DATABASE_ID,
   APPWRITE_STATES_ID,
@@ -9,170 +11,134 @@ import {
   APPWRITE_USER_REQUESTS_ID,
 } from "../utils/appwrite/constants";
 
+// Replace with your actual Issues collection ID
+const APPWRITE_ISSUES_ID = "your_issues_collection_id_here"; // ← update when created
+
 class DatabaseService {
   constructor() {
-    this.tablesDB = new TablesDB(appwriteClient);
+    this.databases = new Databases(client);
   }
 
-  // ====== Helper functions for dropdowns ======
-  async getStates() {
+  // Helper: List documents or return empty on error
+  async _listDocuments(collectionId, queries = []) {
     try {
-      const res = await this.tablesDB.listRows({
-        databaseId: APPWRITE_DATABASE_ID,
-        tableId: APPWRITE_STATES_ID,
-      });
-      return res.rows;
-    } catch (err) {
-      console.error("Error fetching states:", err);
+      const response = await this.databases.listDocuments(
+        APPWRITE_DATABASE_ID,
+        collectionId,
+        queries
+      );
+      return response.documents;
+    } catch (error) {
+      console.error(`Error listing from ${collectionId}:`, error);
       return [];
     }
+  }
+
+  // ────────────────────────────────────────────────
+  // Dropdown / Cascading data – FIXED queries
+  // ────────────────────────────────────────────────
+
+  async getStates() {
+    return this._listDocuments(APPWRITE_STATES_ID);
   }
 
   async getDistrictsByState(stateId) {
-    try {
-      const res = await this.tablesDB.listRows({
-        databaseId: APPWRITE_DATABASE_ID,
-        tableId: APPWRITE_DISTRICTS_ID,
-        queries: [Query.equal("states", stateId)],
-      });
-      return res.rows;
-    } catch (err) {
-      console.error("Error fetching districts:", err);
-      return [];
-    }
+    return this._listDocuments(APPWRITE_DISTRICTS_ID, [
+      Query.equal("states", stateId),  // ← FIXED: using correct attribute "states"
+    ]);
   }
 
   async getZonesByDistrict(districtId) {
-    try {
-      const res = await this.tablesDB.listRows({
-        databaseId: APPWRITE_DATABASE_ID,
-        tableId: APPWRITE_ZONES_ID,
-        queries: [Query.equal("districts", districtId)],
-      });
-      return res.rows;
-    } catch (err) {
-      console.error("Error fetching zones:", err);
-      return [];
-    }
+    return this._listDocuments(APPWRITE_ZONES_ID, [
+      Query.equal("districts", districtId),  // ← assume similar "districts" relationship
+      // If it's actually "district" or "districtId", change here after checking
+    ]);
   }
 
   async getSchoolsByZone(zoneId) {
-    try {
-      const res = await this.tablesDB.listRows({
-        databaseId: APPWRITE_DATABASE_ID,
-        tableId: APPWRITE_SCHOOLS_ID,
-        queries: [Query.equal("zones", zoneId)],
-      });
-      return res.rows;
-    } catch (err) {
-      console.error("Error fetching schools:", err);
-      return [];
-    }
+    return this._listDocuments(APPWRITE_SCHOOLS_ID, [
+      Query.equal("zones", zoneId),  // ← assume "zones" relationship
+      // If it's "zone" or "zoneId", change here after checking
+    ]);
   }
 
-  // ====== User Request functions ======
+  // For District Admin dashboard
+  async getSchoolsByDistrict(districtId) {
+    return this._listDocuments(APPWRITE_SCHOOLS_ID, [
+      Query.equal("districts", districtId),
+    ]);
+  }
+
+  async getIssuesBySchool(schoolId) {
+    return this._listDocuments(APPWRITE_ISSUES_ID, [
+      Query.equal("school", schoolId),
+      Query.orderDesc("$createdAt"),
+    ]);
+  }
+
+  // ────────────────────────────────────────────────
+  // User Requests / Approval (unchanged)
+  // ────────────────────────────────────────────────
+
   async createUserRequest(data) {
-    return await this.tablesDB.createRow({
-      databaseId: APPWRITE_DATABASE_ID,
-      tableId: APPWRITE_USER_REQUESTS_ID,
-      rowId: ID.unique(),
-      data,
-    });
+    try {
+      return await this.databases.createDocument(
+        APPWRITE_DATABASE_ID,
+        APPWRITE_USER_REQUESTS_ID,
+        ID.unique(),
+        data
+      );
+    } catch (error) {
+      console.error("Error creating user request:", error);
+      throw new Error(error.message || "Failed to create request");
+    }
   }
 
   async getStateAdmin(stateId) {
-    try {
-      const res = await this.tablesDB.listRows({
-        databaseId: APPWRITE_DATABASE_ID,
-        tableId: APPWRITE_USER_REQUESTS_ID,
-        queries: [
-          Query.equal("requestedRole", "stateadmin"),
-          Query.equal("status", "approved"),
-          Query.equal("state", stateId),
-        ],
-      });
-      return res.rows[0] || null;
-    } catch (err) {
-      console.error("Error fetching state admin:", err);
-      return null;
-    }
+    const requests = await this._listDocuments(APPWRITE_USER_REQUESTS_ID, [
+      Query.equal("requestedRole", "stateadmin"),
+      Query.equal("status", "approved"),
+      Query.equal("state", stateId),
+    ]);
+    return requests[0] || null;
   }
 
   async getDistrictAdmin(districtId) {
-    try {
-      const res = await this.tablesDB.listRows({
-        databaseId: APPWRITE_DATABASE_ID,
-        tableId: APPWRITE_USER_REQUESTS_ID,
-        queries: [
-          Query.equal("requestedRole", "districtadmin"),
-          Query.equal("status", "approved"),
-          Query.equal("district", districtId),
-        ],
-      });
-      return res.rows[0] || null;
-    } catch (err) {
-      console.error("Error fetching district admin:", err);
-      return null;
-    }
+    const requests = await this._listDocuments(APPWRITE_USER_REQUESTS_ID, [
+      Query.equal("requestedRole", "districtadmin"),
+      Query.equal("status", "approved"),
+      Query.equal("district", districtId),
+    ]);
+    return requests[0] || null;
   }
 
-  //getStateAdminRequests
-  async  getStateAdminRequests() {
-  const res = await this.tablesDB.listRows({
-    databaseId: APPWRITE_DATABASE_ID,
-    tableId: APPWRITE_USER_REQUESTS_ID,
-      queries: [
-        Query.equal("requestedRole", "stateadmin"),
-        Query.equal("status", "pending")
-      ]
-    }
-  );
+  async getStateAdminRequests() {
+    return this._listDocuments(APPWRITE_USER_REQUESTS_ID, [
+      Query.equal("requestedRole", "stateadmin"),
+      Query.equal("status", "pending"),
+    ]);
+  }
 
-  return res.rows;
-}
+  async getdistrictAdminRequests() {
+    return this._listDocuments(APPWRITE_USER_REQUESTS_ID, [
+      Query.equal("requestedRole", "districtadmin"),
+      Query.equal("status", "pending"),
+    ]);
+  }
 
-  //getDistrictAdminRequests
-  async  getdistrictAdminRequests() {
-  const res = await this.tablesDB.listRows({
-    databaseId: APPWRITE_DATABASE_ID,
-    tableId: APPWRITE_USER_REQUESTS_ID,
-      queries: [
-        Query.equal("requestedRole", "districtadmin"),
-        Query.equal("status", "pending")
-      ]
-    }
-  );
+  async getTechnicianRequests() {
+    return this._listDocuments(APPWRITE_USER_REQUESTS_ID, [
+      Query.equal("requestedRole", "technician"),
+      Query.equal("status", "pending"),
+    ]);
+  }
 
-  return res.rows;
-}
-
-async  getTechnicianRequests() {
-  const res = await this.tablesDB.listRows({
-    databaseId: APPWRITE_DATABASE_ID,
-    tableId: APPWRITE_USER_REQUESTS_ID,
-      queries: [
-        Query.equal("requestedRole", "technician"),
-        Query.equal("status", "pending")
-      ]
-    }
-  );
-
-  return res.rows;
-}
-async  getschoolAdminRequests() {
-  const res = await this.tablesDB.listRows({
-    databaseId: APPWRITE_DATABASE_ID,
-    tableId: APPWRITE_USER_REQUESTS_ID,
-      queries: [
-        Query.equal("requestedRole", "schooladmin"),
-        Query.equal("status", "pending")
-      ]
-    }
-  );
-
-  return res.rows;
-}
-
+  async getschoolAdminRequests() {
+    return this._listDocuments(APPWRITE_USER_REQUESTS_ID, [
+      Query.equal("requestedRole", "schooladmin"),
+      Query.equal("status", "pending"),
+    ]);
+  }
 }
 
 export default new DatabaseService();

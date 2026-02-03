@@ -1,21 +1,39 @@
 import { Link } from "react-router-dom";
+
 function Home() {
   return (
-    <div className="flex flex-col justify-center items-center text-center min-h-screen bg-gray-100 px-4">
-      <h1 className="text-4xl md:text-6xl font-bold text-blue-900 mb-6">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 py-12 text-center">
+      {/* Hero / Main heading */}
+      <h1 className="mb-6 text-4xl font-extrabold tracking-tight text-blue-900 md:text-5xl lg:text-6xl">
         Digital Infrastructure Management System
       </h1>
-      <p className="text-lg md:text-xl text-gray-700 max-w-2xl mb-6">
-        A centralized platform for managing government school digital infrastructure efficiently.
+
+      {/* Subtitle / description */}
+      <p className="mb-10 max-w-3xl text-lg text-gray-700 md:text-xl">
+        A centralized platform for efficiently managing and tracking digital infrastructure in government schools — from reporting issues to assigning technicians and monitoring resolutions.
       </p>
-      <div className="flex gap-4">
-        <Link to="/register" className="bg-blue-900 text-white px-6 py-3 rounded hover:bg-blue-800 transition">
-          Get Started
+
+      {/* Call-to-action buttons */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
+        <Link
+          to="/register"
+          className="inline-flex items-center justify-center rounded-lg bg-blue-900 px-8 py-3.5 font-medium text-white shadow-md transition-colors hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        >
+          Get Started – Register Now
         </Link>
-        <Link to="/login" className="bg-white border border-blue-900 text-blue-900 px-6 py-3 rounded hover:bg-blue-900 hover:text-white transition">
-          Login
+
+        <Link
+          to="/login"
+          className="inline-flex items-center justify-center rounded-lg border border-blue-900 bg-white px-8 py-3.5 font-medium text-blue-900 shadow-sm transition-colors hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        >
+          Already have an account? Login
         </Link>
       </div>
+
+      {/* Optional small footer note */}
+      <p className="mt-12 text-sm text-gray-500">
+        Designed for school administrators, technicians, district & state officials
+      </p>
     </div>
   );
 }
