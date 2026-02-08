@@ -198,7 +198,7 @@ class DatabaseService {
         databaseId: APPWRITE_DATABASE_ID,
         tableId: APPWRITE_ISSUES_ID,
         queries: [
-          Query.equal("schoolId", schoolId), // your relationship field is "schools"
+          Query.equal("schoolId", schoolId),
           Query.orderDesc("$createdAt"),
         ],
       });
@@ -276,6 +276,22 @@ class DatabaseService {
       console.error("Error fetching Issues by technicianId:", err);
       return null;
     }
+  }
+
+  async updateIssueStatus(issueId, newStatus){
+   console.log(issueId);
+   console.log(newStatus);
+   try{
+   await this.tablesDB.updateRow(
+    APPWRITE_DATABASE_ID,
+    APPWRITE_ISSUES_ID,
+    issueId,
+    { status: newStatus }
+);
+   }
+   catch (err){
+    console.log("Error updating the status",err);
+   }
   }
 }
 
