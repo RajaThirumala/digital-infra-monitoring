@@ -111,32 +111,32 @@ const useAuthStore = create(
 
       // Centralized redirect logic after login/register/approval
       redirectAfterAuth: (user, navigate) => {
-  if (!user) {
-    navigate("/login", { replace: true });
-    return;
-  }
+        if (!user) {
+          navigate("/login", { replace: true });
+          return;
+        }
 
-  const role = getUserRole(user) || get().role;
-  console.log(role);
+        const role = getUserRole(user) || get().role;
+        console.log(role);
 
-  // If pending or no role → waiting
-  if (!role || role === "pending") {
-    navigate("/waiting-approval", { replace: true });
-    return;
-  }
+        // If pending or no role → waiting
+        if (!role || role === "pending") {
+          navigate("/waiting-approval", { replace: true });
+          return;
+        }
 
-  const pathMap = {
-    superadmin: "/dashboard/super-admin",
-    stateadmin: "/dashboard/state-admin",
-    districtadmin: "/dashboard/district-admin",
-    technician: "/dashboard/technician",
-    schooladmin: "/dashboard/school-admin",
-  };
+        const pathMap = {
+          superadmin: "/dashboard/super-admin",
+          stateadmin: "/dashboard/state-admin",
+          districtadmin: "/dashboard/district-admin",
+          technician: "/dashboard/technician",
+          schooladmin: "/dashboard/school-admin",
+        };
 
-  const redirectTo = pathMap[role] || "/";
-  console.log(redirectTo)
-  navigate(redirectTo, { replace: true });
-},
+        const redirectTo = pathMap[role] || "/";
+        console.log(redirectTo)
+        navigate(redirectTo, { replace: true });
+      },
 
       // Clear error manually if needed
       clearError: () => set({ error: null }),

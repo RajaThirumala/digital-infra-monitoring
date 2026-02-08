@@ -10,7 +10,7 @@ export default function DistrictAdmin() {
   const { user } = useAuthStore();
 
   // Try common places for districtId (prefs is most likely)
-  const districtId = user?.prefs?.district || user?.district || null;
+  const districtId = user?.district || null;
 
   console.log("DistrictAdmin: Full user object:", user);
   console.log("DistrictAdmin: Extracted districtId:", districtId);

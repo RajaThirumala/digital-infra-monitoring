@@ -6,4 +6,4 @@ export const APPWRITE_SCHOOLS_ID = import.meta.env.VITE_APPWRITE_SCHOOLS_ID
 export const APPWRITE_DISTRICTS_ID = import.meta.env.VITE_APPWRITE_DISTRICTS_ID
 export const APPWRITE_STATES_ID = import.meta.env.VITE_APPWRITE_STATES_ID
 export const APPWRITE_ZONES_ID = import.meta.env.VITE_APPWRITE_ZONES_ID
-export const VITE_APPWRITE_ISSUES_ID = import.meta.env.VITE_APPWRITE_ISSUES_ID
+export const APPWRITE_ISSUES_ID = import.meta.env.VITE_APPWRITE_ISSUES_ID
