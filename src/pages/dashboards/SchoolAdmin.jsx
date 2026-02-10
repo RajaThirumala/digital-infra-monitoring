@@ -26,8 +26,7 @@ export default function SchoolAdmin() {
     },
     enabled: !!schoolAdminId,
   });
-
-  
+  console.log("issues",issues);
 
   // Mutation to create new issue
   const createIssueMutation = useMutation({
@@ -44,23 +43,39 @@ export default function SchoolAdmin() {
     description: "",
     status: "OPEN",
   });
-
-  const handleAddIssue = () => {
+  
+  const handleAddIssue = async () => {
     console.log("Inside add issue");
     // Get schoolId first (from admin)
-    console.log("issues",issues);
-    const schoolId = issues[0]?.schoolId;
-    const schoolName = issues[0]?.schoolName; 
-    const assignedTo = issues[0]?.assignedTo;
-    const districtId = issues[0]?.districtId;
-    const zoneId = issues[0]?.zoneId;
-    console.log("schoolId",schoolId);
+    let schoolId, schoolName, technician, assignedTo, technicianId, districtId, zoneId;
+
+    if (issues.length > 0) {
+      schoolId = issues[0]?.schoolId;
+      schoolName = issues[0]?.schoolName; 
+      assignedTo = issues[0]?.assignedTo;
+      technicianId = issues[0]?.technicianId;
+      districtId = issues[0]?.districtId;
+      zoneId = issues[0]?.zoneId;
+    } else {
+      schoolId = await dbService.getSchoolIdByAdmin(schoolAdminId);
+      const school = await dbService.getSchoolDetailsById(schoolId);
+      console.log("insideHandleissue",school);
+      schoolName = school.name || ""; 
+      districtId = school.districts || "";
+      zoneId = school.zones || "";
+      technician = await dbService.getTechnicianByZone(zoneId) || "";
+      assignedTo = technician.userName;
+      technicianId = technician.userId; 
+      console.log("assignedTo",assignedTo)
+    }
+    
     
     createIssueMutation.mutate({
       ...newIssue,
       schoolId: schoolId,
       schoolName: schoolName,
       assignedTo: assignedTo,
+      technicianId: technicianId,
       districtId: districtId,
       zoneId: zoneId
     });
@@ -149,7 +164,7 @@ export default function SchoolAdmin() {
 
                 {/* Uploaded Media Placeholder */}
                 <p className="text-gray-700 mb-4 line-clamp-3">
-                  AssignedTo:{issue.assignedTo}
+                  AssignedTo: {issue.assignedTo}
                 </p>
                 {issue.image || issue.document ? (
                   <div className="mt-4">
@@ -230,7 +245,7 @@ export default function SchoolAdmin() {
                 </button>
                 <button
                   onClick={handleAddIssue}
-                  disabled={!newIssue.issueType || !newIssue.description}
+                  disabled={!newIssue.issueType || !newIssue.deviceType}
                   className="px-6 py-3 bg-blue-900 text-white rounded-lg hover:bg-blue-800 transition disabled:opacity-50"
                 >
                   Submit Issue

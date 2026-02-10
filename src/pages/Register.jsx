@@ -150,7 +150,6 @@ export default function Register() {
   }, [zoneId, isSchoolAdmin, setValue]);
 
   const onSubmit = async (data) => {
-    console.log(data);
     setServerError("");
     setIsSubmitting(true);
 
@@ -160,28 +159,27 @@ export default function Register() {
       await AccountService.login(data.email, data.password);
 
       let parentAdminId = null;
-      const role = data.role.toLowerCase();
+      const r = data.role.toLowerCase();
 
-      if (role === "stateadmin") {
+      if (r === "stateadmin") {
         parentAdminId = "696b9008000178869ab2";
-      } else if (role === "districtadmin") {
+      } else if (r === "districtadmin") {
         const admin = await dbService.getStateAdmin(data.state);
         parentAdminId = admin?.userId ?? null;
-      } else if (["technician", "schooladmin"].includes(role)) {
+      } else if (["technician", "schooladmin"].includes(r)) {
         const admin = await dbService.getDistrictAdmin(data.district);
         parentAdminId = admin?.userId ?? null;
       }
-
+      console.log("username",user);
       await dbService.createUserRequest({
         userId: user.$id,
-        requestedRole: role,
+        userName: user.name,
+        requestedRole: r,
         parentAdminId,
         selfIntro: data.selfIntro || "",
         status: "pending",
         state: data.state || null,
         district: data.district || null,
-        zone: data.zone || null,
-        school: data.school || null
       });
 
       navigate("/waiting-approval");

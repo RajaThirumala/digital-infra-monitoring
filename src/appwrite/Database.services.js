@@ -210,6 +210,7 @@ class DatabaseService {
   }
 
   async createIssue(data) {
+    console.log("data",data);
     try {
       console.log(data);
       return await this.tablesDB.createRow({
@@ -225,6 +226,7 @@ class DatabaseService {
   }
 
   async getSchoolIdByAdmin(adminId) {
+    console.log(adminId);
     try {
       const res = await this.tablesDB.listRows({
         databaseId: APPWRITE_DATABASE_ID,
@@ -253,7 +255,7 @@ class DatabaseService {
       });
       // console.log("res",res);
       console.log("schoolName",res.rows[0]["name"]);
-      return res.rows[0]["name"] || null;
+      return res.rows[0] || null;
     } catch (err) {
       console.error("Error fetching schoolName by schoolId:", err);
       return null;
@@ -266,7 +268,7 @@ class DatabaseService {
         databaseId: APPWRITE_DATABASE_ID,
         tableId: APPWRITE_ISSUES_ID,
         queries: [
-          Query.equal("assignedTo", technicianId),
+          Query.equal("technicianId", technicianId),
         ],
       });
       // console.log("res",res);
@@ -293,6 +295,63 @@ class DatabaseService {
     console.log("Error updating the status",err);
    }
   }
+  async getDistrictIdByAdmin(districtAdminId) {
+  try {
+    console.log("Fetching district for user ID:", districtAdminId);
+
+    const res = await this.tablesDB.listRows({
+      databaseId: APPWRITE_DATABASE_ID,
+      tableId: APPWRITE_USER_REQUESTS_ID,
+      queries: [
+        Query.equal("userId", districtAdminId),
+        Query.equal("requestedRole", "districtadmin"),
+        Query.equal("status", "approved"),
+      ],
+    });
+
+    console.log("User requests query result:", res);
+    console.log("Number of approved requests found:", res.rows.length);
+
+    if (res.rows.length === 0) {
+      console.warn("No approved district admin request found for user:", districtAdminId);
+      return null;
+    }
+
+    // Get the district ID from the approved request row
+    const districtId = res.rows[0].district;
+
+    if (!districtId) {
+      console.warn("Approved request found, but no 'district' value:", res.rows[0]);
+      return null;
+    }
+
+    console.log("Found district ID:", districtId);
+    return districtId;
+  } catch (err) {
+    console.error("Error in getDistrictIdByAdmin:", err);
+    return null;
+  }
 }
 
+    async getTechnicianByZone(zoneId){
+      try {
+      const res = await this.tablesDB.listRows({
+        databaseId: APPWRITE_DATABASE_ID,
+        tableId: APPWRITE_USER_REQUESTS_ID,
+        queries: [
+          Query.equal("zone", zoneId),
+          Query.equal("requestedRole", "technician"),
+          Query.equal("status", "approved"),
+        ],
+      });
+       console.log("res",res);
+      console.log("technican",res.rows[0]["userName"]);
+      return res.rows[0] || null;
+    } catch (err) {
+      console.error("Error fetching technicianname:", err);
+      return null;
+    }
+    }
+}
+// Inside the class DbService { ... }
 export default new DatabaseService();

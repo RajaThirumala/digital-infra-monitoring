@@ -1,5 +1,4 @@
 // pages/dashboards/Technician.jsx
-import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import useAuthStore from "../../store/authStore";
 import dbService from "../../appwrite/Database.services";
@@ -8,6 +7,7 @@ import clsx from "clsx";
 export default function Technician() {
   const { user } = useAuthStore();
   const technicianId = user?.$id || null;
+  console.log("technicianId",technicianId);
   const queryClient = useQueryClient();
 
   // Fetch issues assigned to this technician
