@@ -1,24 +1,19 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { redirect, useNavigate } from "react-router-dom";
 import useAuthStore from "../store/authStore";
 
 export default function WaitingApproval() {
   const navigate = useNavigate();
   const checkAuth = useAuthStore((state) => state.checkAuth);
+  const {redirectAfterAuth} = useAuthStore();
   const user = useAuthStore((state) => state.user);
 
   const checkApproval = async () => {
-    const fetchedUser = await checkAuth(); // Uses store, sets user
-
-    if (fetchedUser && fetchedUser.labels && fetchedUser.labels.length > 0) {
-      // Redirect based on label
-      if (fetchedUser.labels.includes("superadmin")) navigate("/super-admin");
-      else if (fetchedUser.labels.includes("stateadmin")) navigate("/state-admin");
-      else if (fetchedUser.labels.includes("districtadmin")) navigate("/district-admin");
-      else if (fetchedUser.labels.includes("technician")) navigate("/technician");
-      else if (fetchedUser.labels.includes("schooladmin")) navigate("/school-admin");
-      else navigate("/"); // Fallback
-    }
+    const fetchedUser = await checkAuth();
+    console.log(fetchedUser);
+     // Uses store, sets user
+    redirectAfterAuth(fetchedUser,navigate);
+   
   };
 
   return (

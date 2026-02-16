@@ -333,25 +333,31 @@ class DatabaseService {
   }
 }
 
-    async getTechnicianByZone(zoneId){
-      try {
-      const res = await this.tablesDB.listRows({
-        databaseId: APPWRITE_DATABASE_ID,
-        tableId: APPWRITE_USER_REQUESTS_ID,
-        queries: [
-          Query.equal("zone", zoneId),
-          Query.equal("requestedRole", "technician"),
-          Query.equal("status", "approved"),
-        ],
-      });
-       console.log("res",res);
-      console.log("technican",res.rows[0]["userName"]);
-      return res.rows[0] || null;
-    } catch (err) {
-      console.error("Error fetching technicianname:", err);
-      return null;
-    }
-    }
+    // Add this method in your Database.services.js (or wherever dbService is defined)
+
+async getTechniciansByZone(zoneId) {
+  try {
+    if (!zoneId) return [];
+
+    const res = await this.tablesDB.listRows({
+      databaseId: APPWRITE_DATABASE_ID,
+      tableId: APPWRITE_USER_REQUESTS_ID,
+      queries: [
+        Query.equal("zone", zoneId),
+        Query.equal("requestedRole", "technician"),
+        Query.equal("status", "approved"),
+      ],
+    });
+
+    // Return ALL technicians as an ARRAY (this fixes the .map error)
+    console.log("inside",res.rows[0].userName);
+    return res.rows || [];
+
+  } catch (err) {
+    console.error("Error fetching technicians:", err);
+    return [];
+  }
+}
 }
 // Inside the class DbService { ... }
 export default new DatabaseService();

@@ -40,6 +40,7 @@ const useAuthStore = create(
         try {
           const user = await accountService.getCurrentUser();
           const role = getUserRole(user);
+          console.log("user",user);
           set({ user, role, error: null });
           return user;
         } catch (err) {
@@ -117,7 +118,7 @@ const useAuthStore = create(
         }
 
         const role = getUserRole(user) || get().role;
-        console.log(role);
+        console.log("role",role);
 
         // If pending or no role → waiting
         if (!role || role === "pending") {

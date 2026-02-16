@@ -11,6 +11,7 @@ export default function DistrictAdmin() {
 
   const [selectedZone, setSelectedZone] = useState(null);
   const [selectedSchool, setSelectedSchool] = useState(null);
+  const [viewMode, setViewMode] = useState("schools"); // "schools" | "technicians"
 
   // Fetch zones for the district admin's district
   const { data: zones = [], isLoading: zonesLoading, error: zonesError } = useQuery({
@@ -28,6 +29,13 @@ export default function DistrictAdmin() {
   const { data: schools = [], isLoading: schoolsLoading, error: schoolsError } = useQuery({
     queryKey: ["schools", selectedZone?.$id],
     queryFn: () => dbService.getSchoolsByZone(selectedZone.$id),
+    enabled: !!selectedZone,
+  });
+
+  // Fetch technicians for selected zone (must return array)
+  const { data: technicians = [], isLoading: techniciansLoading, error: techniciansError } = useQuery({
+    queryKey: ["technicians", selectedZone?.$id],
+    queryFn: () => dbService.getTechniciansByZone(selectedZone.$id),
     enabled: !!selectedZone,
   });
 
@@ -82,7 +90,7 @@ export default function DistrictAdmin() {
     </div>
   );
 
-  // School issues view
+  // ====================== SCHOOL ISSUES VIEW ======================
   if (selectedSchool) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
@@ -115,54 +123,92 @@ export default function DistrictAdmin() {
     );
   }
 
-  // Schools list in zone
+  // ====================== ZONE VIEW (Schools or Technicians) ======================
   if (selectedZone) {
+    const isTechniciansView = viewMode === "technicians";
+
     return (
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="mx-auto max-w-7xl">
           <button
-            onClick={() => setSelectedZone(null)}
+            onClick={() => {
+              setSelectedZone(null);
+              setViewMode("schools");
+            }}
             className="mb-6 px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
           >
             ← Back to Zones
           </button>
 
           <h1 className="text-2xl font-bold text-gray-900 mb-8">
-            {selectedZone.name} – Schools
+            {selectedZone.name} – {isTechniciansView ? "Technicians" : "Schools"}
           </h1>
 
-          {schoolsLoading && <p className="text-center py-16 text-gray-600">Loading schools...</p>}
-          {schoolsError && <p className="text-red-600 text-center py-8">Error: {schoolsError.message}</p>}
+          {isTechniciansView ? (
+            <>
+              {techniciansLoading && <p className="text-center py-16 text-gray-600">Loading technicians...</p>}
+              {techniciansError && <p className="text-red-600 text-center py-8">Error: {techniciansError.message}</p>}
 
-          {!schoolsLoading && !schoolsError && schools.length === 0 && (
-            <p className="text-center py-16 text-gray-600 text-lg">No schools found in this zone.</p>
-          )}
+              {!techniciansLoading && !techniciansError && technicians.length === 0 && (
+                <p className="text-center py-16 text-gray-600 text-lg">No technicians assigned to this zone yet.</p>
+              )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {schools.map(school => (
-              <div
-                key={school.$id}
-                onClick={() => setSelectedSchool(school)}
-                className="bg-white rounded-xl shadow border border-gray-200 p-6 hover:shadow-lg hover:border-gray-300 transition-all cursor-pointer"
-              >
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {school.name || "Unnamed School"}
-                </h3>
-                <p className="text-sm text-gray-600">
-                  {school.code || "No code"}
-                </p>
-                <p className="mt-4 text-blue-600 text-sm font-medium">
-                  View issues →
-                </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {technicians.map((tech) => (
+                  <div
+                    key={tech.$id}
+                    className="bg-white rounded-xl shadow border border-gray-200 p-6 hover:shadow-lg hover:border-gray-300 transition-all"
+                  >
+                    <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                      {tech.userName || "Unnamed Technician"}
+                    </h3>
+                    <p className="text-sm text-gray-500 mb-3">ID: {tech.userId}</p>
+
+                    {tech.selfIntro && tech.selfIntro.trim() && (
+                      <p className="text-sm italic text-gray-600">“{tech.selfIntro}”</p>
+                    )}
+
+                    <p className="mt-4 text-green-600 text-sm font-medium">Active • Approved</p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          ) : (
+            <>
+              {schoolsLoading && <p className="text-center py-16 text-gray-600">Loading schools...</p>}
+              {schoolsError && <p className="text-red-600 text-center py-8">Error: {schoolsError.message}</p>}
+
+              {!schoolsLoading && !schoolsError && schools.length === 0 && (
+                <p className="text-center py-16 text-gray-600 text-lg">No schools found in this zone.</p>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {schools.map(school => (
+                  <div
+                    key={school.$id}
+                    onClick={() => setSelectedSchool(school)}
+                    className="bg-white rounded-xl shadow border border-gray-200 p-6 hover:shadow-lg hover:border-gray-300 transition-all cursor-pointer"
+                  >
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      {school.name || "Unnamed School"}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      {school.code || "No code"}
+                    </p>
+                    <p className="mt-4 text-blue-600 text-sm font-medium">
+                      View issues →
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
     );
   }
 
-  // Main dashboard: Zones cards
+  // ====================== MAIN DASHBOARD – ZONES ======================
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="mx-auto max-w-7xl">
@@ -190,12 +236,7 @@ export default function DistrictAdmin() {
             {zones.map((zone) => (
               <div
                 key={zone.$id}
-                className={`
-                  group relative bg-white rounded-xl shadow border border-gray-200
-                  transition-all duration-300 ease-out
-                  hover:shadow-xl hover:scale-[1.02] hover:border-gray-300
-                  cursor-pointer
-                `}
+                className="group relative bg-white rounded-xl shadow border border-gray-200 transition-all duration-300 ease-out hover:shadow-xl hover:scale-[1.02] hover:border-gray-300 cursor-pointer"
               >
                 <div className="relative p-6 pb-20">
                   <h2 className="text-xl font-semibold text-gray-800 mb-2 group-hover:text-gray-900 transition-colors">
@@ -211,40 +252,27 @@ export default function DistrictAdmin() {
                     </span>
                   </div>
 
-                  {/* Always visible light labels – become buttons on hover */}
                   <div className="absolute bottom-0 left-0 right-0 pb-6 px-6 flex gap-4 justify-center">
-                    {/* Technicians */}
-                    <div
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        alert("Technician view is under preparation – coming soon!");
-                        // Later replace with real logic
-                      }}
-                      className={`
-                        flex-1 text-center text-sm font-medium py-3 px-5 rounded-lg
-                        bg-gray-50 text-gray-700 border border-gray-200
-                        hover:bg-gray-100 hover:text-gray-900 hover:border-gray-300
-                        hover:shadow-sm hover:-translate-y-0.5
-                        transition-all duration-300 ease-out cursor-pointer
-                      `}
-                    >
-                      Technicians
-                    </div>
-
-                    {/* Schools */}
+                    {/* Technicians Button */}
                     <div
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedZone(zone);
-                        console.log("Navigating to schools for zone:", zone.$id);
+                        setViewMode("technicians");
                       }}
-                      className={`
-                        flex-1 text-center text-sm font-medium py-3 px-5 rounded-lg
-                        bg-blue-50 text-blue-700 border border-blue-100
-                        hover:bg-blue-100 hover:text-blue-800 hover:border-blue-200
-                        hover:shadow-sm hover:-translate-y-0.5
-                        transition-all duration-300 ease-out cursor-pointer
-                      `}
+                      className="flex-1 text-center text-sm font-medium py-3 px-5 rounded-lg bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100 hover:text-gray-900 hover:border-gray-300 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-300 ease-out cursor-pointer"
+                    >
+                      Technicians
+                    </div>
+
+                    {/* Schools Button */}
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedZone(zone);
+                        setViewMode("schools");
+                      }}
+                      className="flex-1 text-center text-sm font-medium py-3 px-5 rounded-lg bg-blue-50 text-blue-700 border border-blue-100 hover:bg-blue-100 hover:text-blue-800 hover:border-blue-200 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-300 ease-out cursor-pointer"
                     >
                       Schools
                     </div>

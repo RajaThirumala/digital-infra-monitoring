@@ -63,7 +63,7 @@ export default function SchoolAdmin() {
       schoolName = school.name || ""; 
       districtId = school.districts || "";
       zoneId = school.zones || "";
-      technician = await dbService.getTechnicianByZone(zoneId) || "";
+      technician = await dbService.getTechniciansByZone(zoneId)[0] || "";
       assignedTo = technician.userName;
       technicianId = technician.userId; 
       console.log("assignedTo",assignedTo)

@@ -180,6 +180,8 @@ export default function Register() {
         status: "pending",
         state: data.state || null,
         district: data.district || null,
+        zone: data.zone || null,
+        school: data.school || null
       });
 
       navigate("/waiting-approval");
