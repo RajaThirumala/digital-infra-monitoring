@@ -184,7 +184,7 @@ class DatabaseService {
         ],
       });
       // console.log("res",res);
-      console.log("school",res.rows[0]["userName"]);
+      console.log("school", res.rows[0]["userName"]);
       return res.rows[0]["userName"] || null;
     } catch (err) {
       console.error("Error fetching userName:", err);
@@ -210,7 +210,7 @@ class DatabaseService {
   }
 
   async createIssue(data) {
-    console.log("data",data);
+    console.log("data", data);
     try {
       console.log(data);
       return await this.tablesDB.createRow({
@@ -236,7 +236,7 @@ class DatabaseService {
         ],
       });
       // console.log("res",res);
-      console.log("school",res.rows[0]["school"]);
+      console.log("school", res.rows[0]["school"]);
       return res.rows[0]["school"] || null;
     } catch (err) {
       console.error("Error fetching school by admin:", err);
@@ -254,7 +254,7 @@ class DatabaseService {
         ],
       });
       // console.log("res",res);
-      console.log("schoolName",res.rows[0]["name"]);
+      console.log("schoolName", res.rows[0]["name"]);
       return res.rows[0] || null;
     } catch (err) {
       console.error("Error fetching schoolName by schoolId:", err);
@@ -263,7 +263,7 @@ class DatabaseService {
   }
 
   async getIssuesByAssignedTo(technicianId) {
-      try {
+    try {
       const res = await this.tablesDB.listRows({
         databaseId: APPWRITE_DATABASE_ID,
         tableId: APPWRITE_ISSUES_ID,
@@ -272,92 +272,152 @@ class DatabaseService {
         ],
       });
       // console.log("res",res);
-      console.log("issue1: ",res);
-      return res.rows|| null;
+      console.log("issue1: ", res);
+      return res.rows || null;
     } catch (err) {
       console.error("Error fetching Issues by technicianId:", err);
       return null;
     }
   }
 
-  async updateIssueStatus(issueId, newStatus){
-   console.log(issueId);
-   console.log(newStatus);
-   try{
-   await this.tablesDB.updateRow(
-    APPWRITE_DATABASE_ID,
-    APPWRITE_ISSUES_ID,
-    issueId,
-    { status: newStatus }
-);
-   }
-   catch (err){
-    console.log("Error updating the status",err);
-   }
+  async updateIssueStatus(issueId, newStatus) {
+    console.log(issueId);
+    console.log(newStatus);
+    try {
+      await this.tablesDB.updateRow(
+        APPWRITE_DATABASE_ID,
+        APPWRITE_ISSUES_ID,
+        issueId,
+        { status: newStatus }
+      );
+    }
+    catch (err) {
+      console.log("Error updating the status", err);
+    }
   }
   async getDistrictIdByAdmin(districtAdminId) {
-  try {
-    console.log("Fetching district for user ID:", districtAdminId);
+    try {
+      console.log("Fetching district for user ID:", districtAdminId);
 
-    const res = await this.tablesDB.listRows({
-      databaseId: APPWRITE_DATABASE_ID,
-      tableId: APPWRITE_USER_REQUESTS_ID,
-      queries: [
-        Query.equal("userId", districtAdminId),
-        Query.equal("requestedRole", "districtadmin"),
-        Query.equal("status", "approved"),
-      ],
-    });
+      const res = await this.tablesDB.listRows({
+        databaseId: APPWRITE_DATABASE_ID,
+        tableId: APPWRITE_USER_REQUESTS_ID,
+        queries: [
+          Query.equal("userId", districtAdminId),
+          Query.equal("requestedRole", "districtadmin"),
+          Query.equal("status", "approved"),
+        ],
+      });
 
-    console.log("User requests query result:", res);
-    console.log("Number of approved requests found:", res.rows.length);
+      console.log("User requests query result:", res);
+      console.log("Number of approved requests found:", res.rows.length);
 
-    if (res.rows.length === 0) {
-      console.warn("No approved district admin request found for user:", districtAdminId);
+      if (res.rows.length === 0) {
+        console.warn("No approved district admin request found for user:", districtAdminId);
+        return null;
+      }
+
+      // Get the district ID from the approved request row
+      const districtId = res.rows[0].district;
+
+      if (!districtId) {
+        console.warn("Approved request found, but no 'district' value:", res.rows[0]);
+        return null;
+      }
+
+      console.log("Found district ID:", districtId);
+      return districtId;
+    } catch (err) {
+      console.error("Error in getDistrictIdByAdmin:", err);
       return null;
     }
+  }
 
-    // Get the district ID from the approved request row
-    const districtId = res.rows[0].district;
+  async getTechniciansByZone(zoneId) {
+    try {
+      if (!zoneId) return [];
 
-    if (!districtId) {
-      console.warn("Approved request found, but no 'district' value:", res.rows[0]);
-      return null;
+      const res = await this.tablesDB.listRows({
+        databaseId: APPWRITE_DATABASE_ID,
+        tableId: APPWRITE_USER_REQUESTS_ID,
+        queries: [
+          Query.equal("zone", zoneId),
+          Query.equal("requestedRole", "technician"),
+          Query.equal("status", "approved"),
+        ],
+      });
+
+      // Return ALL technicians as an ARRAY (this fixes the .map error)
+      console.log("inside", res.rows[0].userName);
+      return res.rows || [];
+
+    } catch (err) {
+      console.error("Error fetching technicians:", err);
+      return [];
     }
-
-    console.log("Found district ID:", districtId);
-    return districtId;
-  } catch (err) {
-    console.error("Error in getDistrictIdByAdmin:", err);
-    return null;
   }
-}
-
-    // Add this method in your Database.services.js (or wherever dbService is defined)
-
-async getTechniciansByZone(zoneId) {
-  try {
-    if (!zoneId) return [];
-
-    const res = await this.tablesDB.listRows({
-      databaseId: APPWRITE_DATABASE_ID,
-      tableId: APPWRITE_USER_REQUESTS_ID,
-      queries: [
-        Query.equal("zone", zoneId),
-        Query.equal("requestedRole", "technician"),
-        Query.equal("status", "approved"),
-      ],
-    });
-
-    // Return ALL technicians as an ARRAY (this fixes the .map error)
-    console.log("inside",res.rows[0].userName);
-    return res.rows || [];
-
-  } catch (err) {
-    console.error("Error fetching technicians:", err);
-    return [];
+  async updateIssue(issueId, updatedData) {
+    try {
+      const res = await this.tablesDB.updateRow(
+        APPWRITE_DATABASE_ID,
+        APPWRITE_ISSUES_ID,
+        issueId,
+        updatedData
+      );
+      console.log("Issue updated successfully:", res);
+      return res;
+    } catch (err) {
+      console.error("Error updating issue:", err);
+      throw err;
+    }
   }
-}
+
+  async getAllIssues() {
+    try {
+      const res = await this.tablesDB.listRows({
+        databaseId: APPWRITE_DATABASE_ID,
+        tableId: APPWRITE_ISSUES_ID,   // ← CHANGE TO YOUR ISSUES TABLE ID
+        queries: [],                             // Add Query.equal("state", stateId) if needed
+        limit: 1000,
+      });
+      return res.rows || [];
+    } catch (err) {
+      console.error("Error fetching all issues:", err);
+      return [];
+    }
+  }
+
+  async getDistrictByZone(zoneId) {
+    try {
+      const res = await this.tablesDB.listRows({
+        databaseId: APPWRITE_DATABASE_ID,
+        tableId: APPWRITE_ZONES_ID,   // ← CHANGE TO YOUR ISSUES TABLE ID
+        queries: [
+          Query.equal("$id", zoneId)
+        ],                             // Add Query.equal("state", stateId) if needed
+      });
+      return res.rows[0].districts || [];
+    } catch (err) {
+      console.error("Error fetching DistrictId:", err);
+      return [];
+    }
+  }
+
+  async getDistrictById(districtId) {
+    try {
+      const res = await this.tablesDB.listRows({
+        databaseId: APPWRITE_DATABASE_ID,
+        tableId: APPWRITE_DISTRICTS_ID,   // ← CHANGE TO YOUR ISSUES TABLE ID
+        queries: [
+          Query.equal("$id", districtId)
+        ],                             // Add Query.equal("state", stateId) if needed
+      });
+      return res.rows[0].name || [];
+    } catch (err) {
+      console.error("Error fetching DistrictName:", err);
+      return [];
+    }
+  }
 }
 // Inside the class DbService { ... }
 export default new DatabaseService();

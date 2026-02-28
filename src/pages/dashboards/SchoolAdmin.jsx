@@ -1,17 +1,17 @@
 // pages/dashboards/SchoolAdmin.jsx
-import { useState  } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import useAuthStore from "../../store/authStore";
 import dbService from "../../appwrite/Database.services";
-import clsx from "clsx";  // ← Add this import
+import clsx from "clsx";
 import { ID } from "appwrite";
 
 export default function SchoolAdmin() {
   const { user } = useAuthStore();
   const schoolAdminId = user?.$id || null;
   const queryClient = useQueryClient();
-  // Fetch issues for this school admin's school
-  
+
+  // Fetch issues
   const { 
     data: issues = [], 
     isLoading, 
@@ -26,7 +26,6 @@ export default function SchoolAdmin() {
     },
     enabled: !!schoolAdminId,
   });
-  console.log("issues",issues);
 
   // Mutation to create new issue
   const createIssueMutation = useMutation({
@@ -36,14 +35,25 @@ export default function SchoolAdmin() {
     },
   });
 
+  // Mutation to update existing issue
+  const updateIssueMutation = useMutation({
+    mutationFn: ({ issueId, updatedData }) => dbService.updateIssue(issueId, updatedData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["issues", schoolAdminId] });
+    },
+  });
+
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingIssue, setEditingIssue] = useState(null);
+
   const [newIssue, setNewIssue] = useState({
     issueType: "",
     deviceType: "",
     description: "",
     status: "OPEN",
   });
-  
+
   const handleAddIssue = async () => {
     console.log("Inside add issue");
     // Get schoolId first (from admin)
@@ -69,7 +79,7 @@ export default function SchoolAdmin() {
       console.log("assignedTo",assignedTo)
     }
     
-    
+
     createIssueMutation.mutate({
       ...newIssue,
       schoolId: schoolId,
@@ -81,6 +91,37 @@ export default function SchoolAdmin() {
     });
 
     setShowAddModal(false);
+    setNewIssue({ issueType: "", deviceType: "", description: "", status: "OPEN" });
+  };
+
+  // Open edit modal with current issue data
+  const handleEditClick = (issue) => {
+    setEditingIssue(issue);
+    setNewIssue({
+      issueType: issue.issueType || "",
+      deviceType: issue.deviceType || "",
+      description: issue.description || "",
+      status: issue.status || "OPEN",
+    });
+    setShowEditModal(true);
+  };
+
+  // Update issue
+  const handleUpdateIssue = () => {
+    if (!editingIssue?.$id) return;
+
+    updateIssueMutation.mutate({
+      issueId: editingIssue.$id,
+      updatedData: {
+        issueType: newIssue.issueType,
+        deviceType: newIssue.deviceType,
+        description: newIssue.description,
+        // status is not changed here – keep original
+      },
+    });
+
+    setShowEditModal(false);
+    setEditingIssue(null);
     setNewIssue({ issueType: "", deviceType: "", description: "", status: "OPEN" });
   };
 
@@ -121,13 +162,13 @@ export default function SchoolAdmin() {
           </div>
         )}
 
-        {/* Issues Grid / List */}
+        {/* Issues Grid */}
         {issues.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {issues.map((issue) => (
               <div
                 key={issue.$id}
-                className="bg-white rounded-xl shadow-md p-6 hover:shadow-xl transition-all"
+                className="bg-white rounded-xl shadow-md p-6 hover:shadow-xl transition-all relative"
               >
                 {/* Status Badge */}
                 <div className="flex justify-between items-center mb-4">
@@ -162,17 +203,28 @@ export default function SchoolAdmin() {
                   {issue.description || "No description provided"}
                 </p>
 
-                {/* Uploaded Media Placeholder */}
+                {/* Assigned To */}
                 <p className="text-gray-700 mb-4 line-clamp-3">
-                  AssignedTo: {issue.assignedTo}
+                  AssignedTo:{issue.assignedTo}
                 </p>
+
+                {/* Attachments */}
                 {issue.image || issue.document ? (
                   <div className="mt-4">
                     <p className="text-sm text-gray-500">Attachments: Yes</p>
-                    {/* Add preview if you have file URLs */}
                   </div>
                 ) : (
                   <p className="text-sm text-gray-500 italic">No attachments</p>
+                )}
+
+                {/* Edit Button - bottom-right, only for OPEN */}
+                {issue.status === "OPEN" && (
+                  <button
+                    onClick={() => handleEditClick(issue)}
+                    className="absolute bottom-4 right-4 bg-yellow-500 text-white px-4 py-1.5 rounded-lg hover:bg-yellow-600 transition text-sm font-medium shadow"
+                  >
+                    Edit
+                  </button>
                 )}
               </div>
             ))}
@@ -245,10 +297,89 @@ export default function SchoolAdmin() {
                 </button>
                 <button
                   onClick={handleAddIssue}
-                  disabled={!newIssue.issueType || !newIssue.deviceType}
+                  disabled={!newIssue.issueType || !newIssue.description}
                   className="px-6 py-3 bg-blue-900 text-white rounded-lg hover:bg-blue-800 transition disabled:opacity-50"
                 >
                   Submit Issue
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Issue Modal */}
+      {showEditModal && editingIssue && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-8 max-w-lg w-full mx-4">
+            <h2 className="text-2xl font-bold text-blue-900 mb-6">
+              Edit Issue
+            </h2>
+
+            <div className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Issue Type
+                </label>
+                <select
+                  value={newIssue.issueType}
+                  onChange={(e) => setNewIssue({ ...newIssue, issueType: e.target.value })}
+                  className="w-full border border-gray-300 rounded p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Type</option>
+                  <option value="DEVICE_FAULT">DEVICE_FAULT</option>
+                  <option value="NOT_POWERING_ON">NOT_POWERING_ON</option>
+                  <option value="ABNORMAL_BEHAVIOUR">ABNORMAL_BEHAVIOUR</option>
+                  <option value="OTHER">OTHER</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Device Type
+                </label>
+                <select
+                  value={newIssue.deviceType}
+                  onChange={(e) => setNewIssue({ ...newIssue, deviceType: e.target.value })}
+                  className="w-full border border-gray-300 rounded p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Type</option>
+                  <option value="COMPUTER">COMPUTER</option>
+                  <option value="PROJECTOR">PROJECTOR</option>
+                  <option value="DIGITAL_TV">DIGITAL_TV</option>
+                  <option value="TAB">TAB</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  value={newIssue.description}
+                  onChange={(e) => setNewIssue({ ...newIssue, description: e.target.value })}
+                  rows="4"
+                  placeholder="Describe the issue in detail..."
+                  className="w-full border border-gray-300 rounded p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="flex justify-end gap-4 mt-6">
+                <button
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingIssue(null);
+                  }}
+                  className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpdateIssue}
+                  disabled={!newIssue.issueType || !newIssue.description}
+                  className="px-6 py-3 bg-blue-900 text-white rounded-lg hover:bg-blue-800 transition disabled:opacity-50"
+                >
+                  Update Issue
                 </button>
               </div>
             </div>

@@ -1,5 +1,5 @@
 // pages/dashboards/DistrictAdmin.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import useAuthStore from "../../store/authStore";
 import dbService from "../../appwrite/Database.services";
@@ -13,8 +13,24 @@ export default function DistrictAdmin() {
   const [selectedSchool, setSelectedSchool] = useState(null);
   const [viewMode, setViewMode] = useState("schools"); // "schools" | "technicians"
 
-  // Fetch zones for the district admin's district
-  const { data: zones = [], isLoading: zonesLoading, error: zonesError } = useQuery({
+  // Search + Debounce
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm.trim());
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Fetch zones
+  const { 
+    data: zones = [], 
+    isLoading: zonesLoading, 
+    error: zonesError 
+  } = useQuery({
     queryKey: ["zones", districtAdminId],
     queryFn: async () => {
       if (!districtAdminId) return [];
@@ -25,22 +41,39 @@ export default function DistrictAdmin() {
     enabled: !!districtAdminId,
   });
 
-  // Fetch schools for selected zone
-  const { data: schools = [], isLoading: schoolsLoading, error: schoolsError } = useQuery({
+  // Filter zones by debounced search
+  const filteredZones = zones.filter((zone) =>
+    zone.name?.toLowerCase().includes(debouncedSearch.toLowerCase())
+  );
+
+  // Fetch schools
+  const { 
+    data: schools = [], 
+    isLoading: schoolsLoading, 
+    error: schoolsError 
+  } = useQuery({
     queryKey: ["schools", selectedZone?.$id],
     queryFn: () => dbService.getSchoolsByZone(selectedZone.$id),
     enabled: !!selectedZone,
   });
 
-  // Fetch technicians for selected zone (must return array)
-  const { data: technicians = [], isLoading: techniciansLoading, error: techniciansError } = useQuery({
+  // Fetch technicians
+  const { 
+    data: technicians = [], 
+    isLoading: techniciansLoading, 
+    error: techniciansError 
+  } = useQuery({
     queryKey: ["technicians", selectedZone?.$id],
     queryFn: () => dbService.getTechniciansByZone(selectedZone.$id),
     enabled: !!selectedZone,
   });
 
-  // Fetch issues for selected school
-  const { data: schoolIssues = [], isLoading: schoolIssuesLoading, error: schoolIssuesError } = useQuery({
+  // Fetch school issues
+  const { 
+    data: schoolIssues = [], 
+    isLoading: schoolIssuesLoading, 
+    error: schoolIssuesError 
+  } = useQuery({
     queryKey: ["schoolIssues", selectedSchool?.$id],
     queryFn: () => dbService.getIssuesBySchool(selectedSchool.$id),
     enabled: !!selectedSchool,
@@ -90,7 +123,7 @@ export default function DistrictAdmin() {
     </div>
   );
 
-  // ====================== SCHOOL ISSUES VIEW ======================
+  // School issues view
   if (selectedSchool) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
@@ -107,23 +140,26 @@ export default function DistrictAdmin() {
           </h1>
 
           {schoolIssuesLoading && <p className="text-center py-16 text-gray-600">Loading issues...</p>}
-          {schoolIssuesError && <p className="text-red-600 text-center py-8">Error: {schoolIssuesError.message}</p>}
+
+          {schoolIssuesError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-xl text-center mb-8">
+              Error loading issues: {schoolIssuesError.message || "Unknown error"}
+            </div>
+          )}
 
           {!schoolIssuesLoading && !schoolIssuesError && schoolIssues.length === 0 && (
             <p className="text-center py-16 text-gray-600 text-lg">No issues reported yet.</p>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {schoolIssues.map(issue => (
-              <IssueCard key={issue.$id} issue={issue} />
-            ))}
+            {schoolIssues.map(issue => <IssueCard key={issue.$id} issue={issue} />)}
           </div>
         </div>
       </div>
     );
   }
 
-  // ====================== ZONE VIEW (Schools or Technicians) ======================
+  // Zone view – Schools or Technicians
   if (selectedZone) {
     const isTechniciansView = viewMode === "technicians";
 
@@ -147,7 +183,12 @@ export default function DistrictAdmin() {
           {isTechniciansView ? (
             <>
               {techniciansLoading && <p className="text-center py-16 text-gray-600">Loading technicians...</p>}
-              {techniciansError && <p className="text-red-600 text-center py-8">Error: {techniciansError.message}</p>}
+
+              {techniciansError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-xl text-center mb-8">
+                  Error loading technicians: {techniciansError.message || "Unknown error"}
+                </div>
+              )}
 
               {!techniciansLoading && !techniciansError && technicians.length === 0 && (
                 <p className="text-center py-16 text-gray-600 text-lg">No technicians assigned to this zone yet.</p>
@@ -176,7 +217,12 @@ export default function DistrictAdmin() {
           ) : (
             <>
               {schoolsLoading && <p className="text-center py-16 text-gray-600">Loading schools...</p>}
-              {schoolsError && <p className="text-red-600 text-center py-8">Error: {schoolsError.message}</p>}
+
+              {schoolsError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-xl text-center mb-8">
+                  Error loading schools: {schoolsError.message || "Unknown error"}
+                </div>
+              )}
 
               {!schoolsLoading && !schoolsError && schools.length === 0 && (
                 <p className="text-center py-16 text-gray-600 text-lg">No schools found in this zone.</p>
@@ -208,32 +254,60 @@ export default function DistrictAdmin() {
     );
   }
 
-  // ====================== MAIN DASHBOARD – ZONES ======================
+  // Main dashboard with search
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="mx-auto max-w-7xl">
         <h1 className="text-3xl font-bold text-gray-900 mb-10">District Admin Dashboard</h1>
 
+        {/* Search Bar */}
+        <div className="mb-10 relative max-w-lg mx-auto">
+          <input
+            type="text"
+            placeholder="Search zones by name..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="
+              w-full border border-gray-300 rounded-lg px-5 py-3 pl-11
+              focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500
+              text-gray-700 placeholder-gray-400 shadow-sm
+            "
+          />
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm("")}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 text-xl font-bold"
+            >
+              ×
+            </button>
+          )}
+        </div>
+
         {zonesLoading && (
-          <p className="text-center py-20 text-gray-600 text-xl">Loading zones...</p>
+          <p className="text-center py-20 text-xl text-gray-600">Loading zones...</p>
         )}
 
         {zonesError && (
           <div className="bg-red-50 border border-red-200 text-red-700 p-8 rounded-xl text-center">
-            Error loading zones: {zonesError.message}
+            Error loading zones: {zonesError.message || "Unknown error"}
           </div>
         )}
 
-        {!zonesLoading && !zonesError && zones.length === 0 && (
-          <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 p-10 rounded-xl text-center">
-            <h2 className="text-2xl font-bold mb-4">No Zones Available</h2>
-            <p>Contact support if this is unexpected.</p>
+        {!zonesLoading && !zonesError && filteredZones.length === 0 && (
+          <div className="text-center py-20">
+            <p className="text-xl text-gray-600">
+              {debouncedSearch 
+                ? `No zones found matching "${debouncedSearch}"` 
+                : "No zones available"}
+            </p>
           </div>
         )}
 
-        {zones.length > 0 && (
+        {filteredZones.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {zones.map((zone) => (
+            {filteredZones.map((zone) => (
               <div
                 key={zone.$id}
                 className="group relative bg-white rounded-xl shadow border border-gray-200 transition-all duration-300 ease-out hover:shadow-xl hover:scale-[1.02] hover:border-gray-300 cursor-pointer"
